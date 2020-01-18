@@ -374,35 +374,35 @@ class NerProcessor(DataProcessor):
                 "B-SUR", "I-SUR", "B-ANA", "I-ANA"]
 
 
-class NerBaiduProcessor(DataProcessor):
-    """
-        这里是在做百度的信息抽取比赛转换的格式，在处理过程中发现了一些问题。
-        1、中文中有一些空格\u3000等其他奇怪的字符，需要处理，见上方_read_data函数注解。
-    """
-
-    def get_train_examples(self, data_dir):
-        return self._create_example(self._read_data(os.path.join(data_dir, "train_data_me.json"), mode='train'),
-                                    "train")
-
-    def get_dev_examples(self, data_dir):
-        return self._create_example(self._read_data(os.path.join(data_dir, "dev_data_me.json"), mode='train'), "dev")
-
-    def get_test_examples(self, data_dir):
-        return self._create_example(
-            self._read_data(os.path.join(data_dir, "test_data_me.json"), mode='test'), "test"
-        )
-
-    def get_labels(self):
-        return ["PAD", "B1", "I1", "E1", "S1", "B2", "I2", "E2", "S2", "O", "[CLS]", "[SEP]"]
-
-    def _create_example(self, lines, set_type):
-        examples = []
-        for (i, line) in enumerate(lines):
-            guid = "%s-%s" % (set_type, i)
-            texts = tokenization.convert_to_unicode(line[0])
-            labels = tokenization.convert_to_unicode(line[1])
-            examples.append(InputExample(guid=guid, text_a=texts, label=labels))
-        return examples
+# class NerBaiduProcessor(DataProcessor):
+#     """
+#         这里是在做百度的信息抽取比赛转换的格式，在处理过程中发现了一些问题。
+#         1、中文中有一些空格\u3000等其他奇怪的字符，需要处理，见上方_read_data函数注解。
+#     """
+#
+#     def get_train_examples(self, data_dir):
+#         return self._create_example(self._read_data(os.path.join(data_dir, "train_data_me.json"), mode='train'),
+#                                     "train")
+#
+#     def get_dev_examples(self, data_dir):
+#         return self._create_example(self._read_data(os.path.join(data_dir, "dev_data_me.json"), mode='train'), "dev")
+#
+#     def get_test_examples(self, data_dir):
+#         return self._create_example(
+#             self._read_data(os.path.join(data_dir, "test_data_me.json"), mode='test'), "test"
+#         )
+#
+#     def get_labels(self):
+#         return ["PAD", "B1", "I1", "E1", "S1", "B2", "I2", "E2", "S2", "O", "[CLS]", "[SEP]"]
+#
+#     def _create_example(self, lines, set_type):
+#         examples = []
+#         for (i, line) in enumerate(lines):
+#             guid = "%s-%s" % (set_type, i)
+#             texts = tokenization.convert_to_unicode(line[0])
+#             labels = tokenization.convert_to_unicode(line[1])
+#             examples.append(InputExample(guid=guid, text_a=texts, label=labels))
+#         return examples
 
 
 def convert_single_example(ex_index, example, label_list, max_seq_length,

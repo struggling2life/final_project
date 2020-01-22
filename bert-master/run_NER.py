@@ -66,7 +66,7 @@ flags.DEFINE_bool(
     "models and False for cased models.")
 
 flags.DEFINE_integer(
-    "max_seq_length", 128,
+    "max_seq_length", 256,
     "The maximum total input sequence length after WordPiece tokenization. "
     "Sequences longer than this will be truncated, and sequences shorter "
     "than this will be padded.")
@@ -207,95 +207,95 @@ class DataProcessor(object):
                 lines.append(line)
             return lines
 
-    @classmethod
-    def _read_data(cls, input_file, mode='train'):
-        """
-            对应下文的百度比赛的数据处理。
-            http://lic2019.ccf.org.cn/kg
-            其中有两个地方注意下。 这里先将数据用bert的BasicTokenizer处理一下把一些奇奇怪怪的字符处理掉。如果不处理的话，
-            后文的inputs_id和label_id 对应不上，因为你的label_id是带有那些奇怪的字符的。而bert处理过后不带。
-                    tokenizer = tokenization.BasicTokenizer(do_lower_case=True)
-                    text = tokenizer.tokenize(text)
-        """
-        import json
-        tokenizer = tokenization.BasicTokenizer(do_lower_case=True)
-        trn_data = json.load(open(input_file, encoding='utf-8'))
-        if mode == 'train':
-            train_data = []
-            for line in trn_data:
-                text = line['text'].strip()
-                text = tokenizer.tokenize(text)
-                text = ''.join([l for l in text])
-                label = ['O'] * len(text)
-                spo_list = line['spo_list']
-                sub_ = []
-                obj_ = []
-                for i in spo_list:
-                    sub_.append(i[0])
-                    obj_.append(i[2])
-                ent_spans = []
-                for sub in sub_:
-                    if sub == None:
-                        last_idx = 0
-                        while True:
-                            if last_idx >= len(text):
-                                break
-                            start = text[last_idx:].find(sub)
-                            if start == -1:
-                                break
-                            end = start + len(sub)
-                            ent_spans.append((start + last_idx, end + last_idx))
-                            last_idx = end + last_idx
-                ent_obj = []
-                for obj in obj_:
-                    last_idx = 0
-                    while True:
-                        if last_idx >= len(text):
-                            break
-                        start = text[last_idx:].find(obj)
-                        if start == -1:
-                            break
-                        end = start + len(obj)
-                        ent_obj.append((start + last_idx, end + last_idx))
-                        last_idx = end + last_idx
-
-                for i, c in enumerate(text):
-                    for sp in ent_spans:
-                        if sp[0] == i:
-                            if sp[0] == sp[1]:
-                                label[i] = 'S1'
-                            else:
-                                label[i] = 'B1'
-                        elif sp[1] - 1 == i:
-                            label[i] = 'E1'
-
-                        elif sp[0] < i < sp[1] - 1:
-                            label[i] = 'I1'
-
-                for i, c in enumerate(text):
-                    for sp in ent_obj:
-                        if sp[0] == i:
-                            if sp[0] == sp[1]:
-                                label[i] = 'S2'
-                            else:
-                                label[i] = 'B2'
-                        elif sp[1] - 1 == i:
-                            label[i] = 'E2'
-
-                        elif sp[0] < i < sp[1] - 1:
-                            label[i] = 'I2'
-
-                l = ' '.join([la for la in label])
-                w = ' '.join([word for word in text])
-                train_data.append((w, l))
-            return train_data
-        elif mode == 'test':
-            test_data = []
-            for line in trn_data:
-                text = line['text'].strip()
-                label = ['O'] * len(text)
-                test_data.append((list(text), label))
-            return test_data
+    # @classmethod
+    # def _read_data(cls, input_file, mode='train'):
+    #     """
+    #         对应下文的百度比赛的数据处理。
+    #         http://lic2019.ccf.org.cn/kg
+    #         其中有两个地方注意下。 这里先将数据用bert的BasicTokenizer处理一下把一些奇奇怪怪的字符处理掉。如果不处理的话，
+    #         后文的inputs_id和label_id 对应不上，因为你的label_id是带有那些奇怪的字符的。而bert处理过后不带。
+    #                 tokenizer = tokenization.BasicTokenizer(do_lower_case=True)
+    #                 text = tokenizer.tokenize(text)
+    #     """
+    #     import json
+    #     tokenizer = tokenization.BasicTokenizer(do_lower_case=True)
+    #     trn_data = json.load(open(input_file, encoding='utf-8'))
+    #     if mode == 'train':
+    #         train_data = []
+    #         for line in trn_data:
+    #             text = line['text'].strip()
+    #             text = tokenizer.tokenize(text)
+    #             text = ''.join([l for l in text])
+    #             label = ['O'] * len(text)
+    #             spo_list = line['spo_list']
+    #             sub_ = []
+    #             obj_ = []
+    #             for i in spo_list:
+    #                 sub_.append(i[0])
+    #                 obj_.append(i[2])
+    #             ent_spans = []
+    #             for sub in sub_:
+    #                 if sub == None:
+    #                     last_idx = 0
+    #                     while True:
+    #                         if last_idx >= len(text):
+    #                             break
+    #                         start = text[last_idx:].find(sub)
+    #                         if start == -1:
+    #                             break
+    #                         end = start + len(sub)
+    #                         ent_spans.append((start + last_idx, end + last_idx))
+    #                         last_idx = end + last_idx
+    #             ent_obj = []
+    #             for obj in obj_:
+    #                 last_idx = 0
+    #                 while True:
+    #                     if last_idx >= len(text):
+    #                         break
+    #                     start = text[last_idx:].find(obj)
+    #                     if start == -1:
+    #                         break
+    #                     end = start + len(obj)
+    #                     ent_obj.append((start + last_idx, end + last_idx))
+    #                     last_idx = end + last_idx
+    #
+    #             for i, c in enumerate(text):
+    #                 for sp in ent_spans:
+    #                     if sp[0] == i:
+    #                         if sp[0] == sp[1]:
+    #                             label[i] = 'S1'
+    #                         else:
+    #                             label[i] = 'B1'
+    #                     elif sp[1] - 1 == i:
+    #                         label[i] = 'E1'
+    #
+    #                     elif sp[0] < i < sp[1] - 1:
+    #                         label[i] = 'I1'
+    #
+    #             for i, c in enumerate(text):
+    #                 for sp in ent_obj:
+    #                     if sp[0] == i:
+    #                         if sp[0] == sp[1]:
+    #                             label[i] = 'S2'
+    #                         else:
+    #                             label[i] = 'B2'
+    #                     elif sp[1] - 1 == i:
+    #                         label[i] = 'E2'
+    #
+    #                     elif sp[0] < i < sp[1] - 1:
+    #                         label[i] = 'I2'
+    #
+    #             l = ' '.join([la for la in label])
+    #             w = ' '.join([word for word in text])
+    #             train_data.append((w, l))
+    #         return train_data
+    #     elif mode == 'test':
+    #         test_data = []
+    #         for line in trn_data:
+    #             text = line['text'].strip()
+    #             label = ['O'] * len(text)
+    #             test_data.append((list(text), label))
+    #         return test_data
 
 
 class NerProcessor(DataProcessor):
@@ -370,8 +370,8 @@ class NerProcessor(DataProcessor):
         return examples
 
     def get_labels(self):
-        return ["PAD", "[CLS]", "[SEP]", "B-DES", "I-DES", "B-SYD", "I-SYD", "B-DIS", "I-DIS", "B-MED", "I-MED",
-                "B-SUR", "I-SUR", "B-ANA", "I-ANA"]
+        return ["PAD", "B-DES", "I-DES", "B-SYD", "I-SYD", "B-DIS", "I-DIS", "B-MED", "I-MED",
+                "B-SUR", "I-SUR", "B-ANA", "I-ANA","O",  "[CLS]", "[SEP]",]
 
 
 # class NerBaiduProcessor(DataProcessor):
@@ -421,8 +421,8 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     for (i, label) in enumerate(label_list):
         label_map[label] = i
 
-    la = example.label.split(' ')
-    exa = example.text_a.split(' ')
+    la = example.label.split('|')
+    exa = example.text_a.split('|')
     if len(la) != len(exa):
         print(la, exa)
     assert len(la) == len(exa)
@@ -685,7 +685,7 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
         output_layer = tf.reshape(output_layer, [-1, hidden_size])
         logits = tf.matmul(output_layer, output_weight, transpose_b=True)
         logits = tf.nn.bias_add(logits, output_bias)
-        logits = tf.reshape(logits, [-1, FLAGS.max_seq_length, 10])  # 这里的10对应着总类别数。
+        logits = tf.reshape(logits, [-1, FLAGS.max_seq_length, 16])  # 这里的16对应着总类别数。
         # mask = tf.cast(input_mask,tf.float32)
         # loss = tf.contrib.seq2seq.sequence_loss(logits,labels,mask)
         # return (loss, logits, predict)
@@ -769,9 +769,9 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
                 predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
                 # 评估函数，计算准确率、召回率、F1，假如改类别的话，下方数字需要修改，10是总类别数，1-6是有用的类别。B、I、E，
                 # 具体见 tf.metrics里的函数
-                precision = tf_metrics.precision(label_ids, predictions, 10, [1, 2, 3, 4, 5, 6], average="macro")
-                recall = tf_metrics.recall(label_ids, predictions, 10, [1, 2, 3, 4, 5, 6], average="macro")
-                f = tf_metrics.f1(label_ids, predictions, 10, [1, 2, 3, 4, 5, 6], average="macro")
+                precision = tf_metrics.precision(label_ids, predictions, 16, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], average="macro")
+                recall = tf_metrics.recall(label_ids, predictions, 16, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], average="macro")
+                f = tf_metrics.f1(label_ids, predictions, 16, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], average="macro")
 
                 return {
                     "eval_precision": precision,

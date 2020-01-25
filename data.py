@@ -6,14 +6,14 @@ import os
 from sklearn.model_selection import train_test_split
 
 # 打开文件
-with open("600entity.txt", "r", encoding="GBK") as f:
+with open("600entity.txt", "r") as f:
     result = []
     for j in f.readlines():
         result.append([j.split()[0], j.split()[-1], j.split()[-3], j.split()[-2]])
     result = pd.DataFrame(result[1::], columns=result[0])
     categories = set(result["calss"].values)
 
-with open("original_600.txt", "r", encoding="utf8") as f:
+with open("original_600.txt", "r") as f:
     data = [sentences[:-1] for sentences in f.readlines()]
     data.pop(-1)
 

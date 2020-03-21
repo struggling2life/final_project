@@ -28,7 +28,10 @@ import optimization
 import tokenization
 import tf_metrics
 import tensorflow as tf
+import codecs
 import pickle
+from bert_base.train.lstm_crf_layer import BLSTM_CRF
+
 
 flags = tf.flags
 
@@ -257,7 +260,7 @@ class NerProcessor(DataProcessor):
 
     def get_test_examples(self, data_dir):
         fr = open(os.path.join(data_dir, 'test.txt'))
-   
+
         fw_l = open(os.path.join(data_dir, 'test_target.txt'))
         res = []
         lines = []
@@ -279,7 +282,8 @@ class NerProcessor(DataProcessor):
 
     def get_labels(self):
         return ["PAD", "B-DES", "I-DES", "B-SYD", "I-SYD", "B-DIS", "I-DIS", "B-MED", "I-MED",
-                "B-SUR", "I-SUR", "B-ANA", "I-ANA","O",  "[CLS]", "[SEP]",]
+                "B-SUR", "I-SUR", "B-ANA", "I-ANA","O",  "[CLS]", "[SEP]"]
+
 
 
 
@@ -539,6 +543,23 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
 
     output_layer = model.get_sequence_output()
 
+
+    def _lstm_layer(name, inp, rnn_size):
+        with tf.variable_scope(name) as scope:
+            lstm_fw_cell = tf.nn.rnn_cell.LSTMCell(num_units=rnn_size, forget_bias=1.0, name="fw")
+            lstm_bw_cell = tf.nn.rnn_cell.LSTMCell(num_units=rnn_size, forget_bias=1.0, name="bw")
+            hiddens, state = tf.nn.bidirectional_dynamic_rnn(cell_fw=lstm_fw_cell,
+                                                             cell_bw=lstm_bw_cell,
+                                                             inputs=inp,
+                                                             dtype=tf.float32)
+        return tf.concat(hiddens, 2)
+
+    output_layer = _lstm_layer(name="lstm1", inp=output_layer, rnn_size=16)
+
+
+
+
+
     hidden_size = output_layer.shape[-1].value
 
     output_weight = tf.get_variable(
@@ -556,10 +577,7 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
         logits = tf.matmul(output_layer, output_weight, transpose_b=True)
         logits = tf.nn.bias_add(logits, output_bias)
         logits = tf.reshape(logits, [-1, FLAGS.max_seq_length, 16])
-        # mask = tf.cast(input_mask,tf.float32)
-        # loss = tf.contrib.seq2seq.sequence_loss(logits,labels,mask)
-        # return (loss, logits, predict)
-        ##########################################################################
+
         log_probs = tf.nn.log_softmax(logits, axis=-1)
         one_hot_labels = tf.one_hot(labels, depth=num_labels, dtype=tf.float32)
         per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
@@ -634,7 +652,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
                 scaffold_fn=scaffold_fn)
         elif mode == tf.estimator.ModeKeys.EVAL:
 
-            def metric_fn(per_example_loss, label_ids, logits):
+            def metric_fn(label_ids, logits):
                 # def metric_fn(label_ids, logits):
                 predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
 
@@ -649,18 +667,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
                     # "eval_loss": loss,
                 }
 
-            # def metric_fn(per_example_loss, label_ids, logits, is_real_example):
-            #     predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
-            #     accuracy = tf.metrics.accuracy(
-            #         labels=label_ids, predictions=predictions, weights=is_real_example)
-            #     loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
-            #     return {
-            #         "eval_accuracy": accuracy,
-            #         "eval_loss": loss,
-            #     }
 
-            # eval_metrics = (metric_fn,
-            #                 [per_example_loss, label_ids, logits, is_real_example])
             eval_metrics = (metric_fn, [per_example_loss, label_ids, logits])
             output_spec = tf.contrib.tpu.TPUEstimatorSpec(
                 mode=mode,
@@ -752,11 +759,7 @@ def main(_):
     tf.logging.set_verbosity(tf.logging.INFO)
 
     processors = {
-        # "cola": ColaProcessor,
-        # "mnli": MnliProcessor,
-        # "mrpc": MrpcProcessor,
-        # "xnli": XnliProcessor,
-        "ner": NerProcessor,
+        "ner": NerProcessor
     }
 
     tokenization.validate_case_matches_checkpoint(FLAGS.do_lower_case,
@@ -941,34 +944,6 @@ def main(_):
         fw.close()
         print("*********************done********************")
 
-        # with open(pred_out, 'w') as writer:
-        #     for prediction in result:
-        #         output_line = " ".join(id2label[id] for id in prediction if id != 0) + "\n"
-        #         writer.write(output_line)
-
-        # output_predict_file = os.path.join(FLAGS.output_dir, "test_results.txt")
-        # with tf.gfile.GFile(output_predict_file, "w") as writer:
-        #     tf.logging.info("***** Predict results *****")
-        #     for prediction in result:
-        #         print(prediction)
-        #         output_line = "\t".join(id2label[id] for id in prediction) + "\n"
-        #         writer.write(prediction)
-        #         writer.write(output_line)
-
-
-# with tf.gfile.GFile(output_predict_file, "w") as writer:
-#     num_written_lines = 0
-#     tf.logging.info("***** Predict results *****")
-#     for (i, prediction) in enumerate(result):
-#         probabilities = prediction["probabilities"]
-#         if i >= num_actual_predict_examples:
-#             break
-#         output_line = "\t".join(
-#             str(class_probability)
-#             for class_probability in probabilities) + "\n"
-#         writer.write(output_line)
-#         num_written_lines += 1
-# assert num_written_lines == num_actual_predict_examples
 
 
 if __name__ == "__main__":
